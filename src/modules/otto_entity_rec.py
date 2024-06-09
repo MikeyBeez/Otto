@@ -1,21 +1,15 @@
-# src/modules/otto_entity_rec.py
-import stanza
+import spacy
+from pydantic import BaseModel
+import sys
+from .otto_entity_rec import recognize_entities, EntityTuple
 
-# Download the English model
-stanza.download('en')
+class EntityTuple(BaseModel):
+    entity_type: str
+    entity_value: str
 
-# Load the English pipeline
-nlp = stanza.Pipeline('en')
+nlp = spacy.load("en_core_web_trf")
 
-# Define a function to perform entity recognition
-def recognize_entities(text):
-    # Process the text with Stanza
+def recognize_entities(text, entity_type):
     doc = nlp(text)
-    
-    # Extract entities
-    entities = []
-    for ent in doc.entities:
-        if ent.type == 'PERSON':
-            entities.append(ent.text)
-    
+    entities = [EntityTuple(entity_type=entity.label_, entity_value=entity.text) for entity in doc.ents if entity.label_ == entity_type]
     return entities

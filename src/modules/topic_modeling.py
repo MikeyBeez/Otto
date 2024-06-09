@@ -6,6 +6,11 @@ from config import PERSIST
 import gensim
 from gensim.utils import simple_preprocess
 from gensim.matutils import corpus2dense
+import pickle
+
+# Set the directory path for saving and loading models
+MODELS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'models')
+os.makedirs(MODELS_DIR, exist_ok=True)
 
 def preprocess_text(text):
     # Tokenize and preprocess text
@@ -28,11 +33,15 @@ def create_lda_model(text_data, num_topics):
     corpus = [dictionary.doc2bow(doc) for doc in text_data]
     # Create a Gensim LDA model
     lda_model = gensim.models.LdaModel(corpus=corpus, id2word=dictionary, passes=15, num_topics=num_topics)
-    if PERSIST:
-        # Save the preprocessed data and LDA model to files
-        save_preprocessed_data(text_data, 'preprocessed_data.pkl')
-        save_lda_model(lda_model, 'lda_model.pkl')
-    return lda_model
+    return lda_model, dictionary
+
+def save_lda_model(lda_model, file_name):
+    file_path = os.path.join(MODELS_DIR, file_name)
+    lda_model.save(file_path)
+
+def load_lda_model(file_name):
+    file_path = os.path.join(MODELS_DIR, file_name)
+    return gensim.models.LdaModel.load(file_path)
 
 def get_topic_words(lda_model, num_words):
     # Get the top words for each topic
@@ -41,13 +50,22 @@ def get_topic_words(lda_model, num_words):
         topic_words.append(topic[1].split("+"))
     return topic_words
 
+def get_topic_distribution(lda_model, dictionary, text):
+    # Preprocess the text
+    tokens = preprocess_text(text)
+    # Convert the text to a bag-of-words representation
+    bow = dictionary.doc2bow(tokens)
+    # Get the topic distribution for the text
+    topic_distribution = lda_model.get_document_topics(bow)
+    return topic_distribution
+
 def main():
     # Load the data from the files in src/data
     data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
     text_data = load_data(data_dir)
     # Perform topic modeling
     num_topics = 5
-    lda_model = create_lda_model(text_data, num_topics)
+    lda_model, dictionary = create_lda_model(text_data, num_topics)
     # Get the top words for each topic
     num_words = 4
     topic_words = get_topic_words(lda_model, num_words)
